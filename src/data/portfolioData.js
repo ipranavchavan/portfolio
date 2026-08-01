@@ -1,11 +1,10 @@
 export const portfolioData = {
   profile: {
-    name: 'Pranav Chavan',
+    name: 'Pranav chavan',
     title: 'Data Analyst & Developer',
     shortBio:
       "I'm Pranav Chavan, a Data Analyst passionate about turning raw data into meaningful business insights. I work with SQL, Python, Pandas, NumPy, Power BI, and Excel to clean, analyze, and visualize data, building dashboards that support data-driven decisions.",
-    resumeUrl:
-      'https://drive.google.com/file/d/1Z1DrzvLAbH_6sOcGH9x2x_LdfrDsNTgM/view?usp=drive_link',
+    resumeUrl: '/Resume.pdf',
     github: 'https://github.com/ipranavchavan',
     linkedin: 'https://www.linkedin.com/in/pranavchavhan/',
     email: 'ipranavchavan@gmail.com',

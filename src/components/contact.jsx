@@ -25,7 +25,7 @@ export default function Contact() {
     setForm((current) => ({ ...current, [name]: value }));
   };
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
 
     const values = Object.fromEntries(Object.entries(form).map(([key, value]) => [key, value.trim()]));
@@ -45,11 +45,30 @@ export default function Contact() {
     setStatus('sending');
     setFeedback('Sending your message...');
 
-    window.setTimeout(() => {
+    try {
+      const response = await fetch('/api/contact', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(values),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        setStatus('error');
+        setFeedback(result.message || 'Unable to send your message right now.');
+        return;
+      }
+
       setStatus('success');
-      setFeedback('Message sent successfully — I will reply shortly.');
+      setFeedback(result.message || 'Message sent successfully — I will reply shortly.');
       setForm(initialForm);
-    }, 900);
+    } catch {
+      setStatus('error');
+      setFeedback('Unable to send your message right now. Please try again later.');
+    }
   };
 
   return (
