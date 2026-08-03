@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { GraduationCap } from 'lucide-react';
+import { ExternalLink, GraduationCap, Link } from 'lucide-react';
 import { portfolioData } from '../data/portfolioData';
 
 export default function Education() {
@@ -38,7 +38,32 @@ export default function Education() {
                   <span className="text-sm font-medium text-slate-500 dark:text-slate-400">{item.years}</span>
                 </div>
                 <p className="mt-1 text-base font-medium text-primary-700 dark:text-primary-300">{item.institution}</p>
-                <p className="mt-3 text-sm leading-7 text-slate-600 dark:text-slate-300">{item.details}</p>
+                {item.details && <p className="mt-3 text-sm leading-7 text-slate-600 dark:text-slate-300">{item.details}</p>}
+
+                {item.portfolioUrl && (
+                  <a
+                    href={item.portfolioUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-3 inline-flex items-center gap-2 text-sm font-medium text-primary-700 transition hover:text-primary-500 dark:text-primary-300"
+                  >
+                    <Link size={15} />
+                    View CRIO portfolio
+                    <ExternalLink size={14} />
+                  </a>
+                )}
+
+                {item.highlights && (
+                  <ul className="mt-3 list-disc space-y-1 pl-5 text-sm leading-6 text-slate-600 marker:text-slate-500 dark:text-slate-300">
+                    {item.highlights.map((highlight) => <li key={highlight}>{highlight}</li>)}
+                  </ul>
+                )}
+
+                {item.techStack && (
+                  <p className="mt-3 text-sm font-medium text-slate-700 dark:text-slate-200">
+                    Tech stack: <span className="font-normal text-slate-600 dark:text-slate-300">{item.techStack}</span>
+                  </p>
+                )}
               </div>
             </div>
           </motion.article>

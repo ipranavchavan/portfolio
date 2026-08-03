@@ -4,7 +4,10 @@ import { motion } from 'framer-motion';
 import { BriefcaseBusiness } from 'lucide-react';
 import { portfolioData } from '../data/portfolioData';
 
-const timeline = portfolioData.experience;
+const displayOrder = ['Executive Lead', 'Sr. Analyst - IT Market Research', 'Analyst - IT Market Research'];
+const timeline = [...portfolioData.experience].sort(
+  (first, second) => displayOrder.indexOf(first.title) - displayOrder.indexOf(second.title)
+);
 
 export default function Experience() {
   return (
@@ -39,10 +42,12 @@ export default function Experience() {
                 <h3 className="text-xl font-semibold text-slate-900 dark:text-white">{item.title}</h3>
                 <span className="text-sm font-medium text-slate-500 dark:text-slate-400">{item.period}</span>
               </div>
-              <p className="mt-1 text-base font-medium text-primary-700 dark:text-primary-300">
-                {item.company}
-                <span className="ml-2 text-sm font-normal text-slate-500 dark:text-slate-400">{item.location}</span>
-              </p>
+              {(item.company || item.location) && (
+                <p className="mt-1 text-base font-medium text-primary-700 dark:text-primary-300">
+                  {item.company}
+                  {item.location && <span className="ml-2 text-sm font-normal text-slate-500 dark:text-slate-400">{item.location}</span>}
+                </p>
+              )}
               <ul className="mt-3 space-y-2 text-sm leading-7 text-slate-600 dark:text-slate-300">
                 {item.description.map((bullet) => (
                   <li key={bullet} className="list-disc pl-5">

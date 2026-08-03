@@ -2,12 +2,47 @@ import { randomUUID } from 'node:crypto';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { NextResponse } from 'next/server';
-import nodemailer from 'nodemailer';
+import { list, put } from '@vercel/blob';
 
 const inquiryStorePath = path.join(process.cwd(), 'src', 'data', 'inquiries.json');
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const shouldUseFileStorage = process.env.VERCEL !== '1' || process.env.ALLOW_FILE_STORAGE === 'true';
+const hasBlobStorageToken = Boolean(process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_TOKEN);
+const blobPath = 'inquiries.json';
+
+async function saveInquiryToGoogleSheets(inquiry) {
+  const endpoint = process.env.GOOGLE_SHEETS_WEB_APP_URL;
+
+  if (!endpoint) {
+    return false;
+  }
+
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'text/plain;charset=utf-8',
+    },
+    body: JSON.stringify({
+      token: process.env.GOOGLE_SHEETS_WEB_APP_TOKEN,
+      inquiry,
+    }),
+    cache: 'no-store',
+  });
+
+  const result = await response.json().catch(() => null);
+
+  if (!response.ok || !result?.success) {
+    throw new Error(result?.message || 'Google Sheets could not save the inquiry.');
+  }
+
+  return true;
+}
 
 async function ensureStoreFile() {
+  if (!shouldUseFileStorage) {
+    return;
+  }
+
   await fs.mkdir(path.dirname(inquiryStorePath), { recursive: true });
 
   try {
@@ -17,50 +52,68 @@ async function ensureStoreFile() {
   }
 }
 
+async function readInquiriesFromBlob() {
+  const token = process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_TOKEN;
+
+  if (!token) {
+    return [];
+  }
+
+  const { blobs } = await list({ prefix: blobPath, token });
+  if (blobs.length === 0) {
+    return [];
+  }
+
+  const response = await fetch(blobs[0].url);
+  const fileContents = await response.text();
+  return JSON.parse(fileContents);
+}
+
+async function persistInquiryToBlob(inquiry) {
+  const token = process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_TOKEN;
+
+  if (!token) {
+    return false;
+  }
+
+  const existing = await readInquiriesFromBlob();
+  const updatedStore = [inquiry, ...existing];
+  await put(blobPath, JSON.stringify(updatedStore, null, 2), {
+    access: 'private',
+    addRandomSuffix: false,
+    token,
+  });
+
+  return true;
+}
+
 async function readInquiries() {
+  if (hasBlobStorageToken) {
+    return await readInquiriesFromBlob();
+  }
+
+  if (!shouldUseFileStorage) {
+    return [];
+  }
+
   await ensureStoreFile();
   const fileContents = await fs.readFile(inquiryStorePath, 'utf8');
   return JSON.parse(fileContents);
 }
 
-async function sendEmail(inquiry) {
-  const smtpHost = process.env.SMTP_HOST;
-  const smtpPort = Number(process.env.SMTP_PORT || 587);
-  const smtpUser = process.env.SMTP_USER;
-  const smtpPass = process.env.SMTP_PASS;
-  const smtpFrom = process.env.SMTP_FROM || smtpUser;
-  const smtpTo = process.env.SMTP_TO || smtpUser;
-
-  if (!smtpHost || !smtpUser || !smtpPass) {
-    return;
+async function persistInquiry(inquiry) {
+  if (hasBlobStorageToken) {
+    return await persistInquiryToBlob(inquiry);
   }
 
-  const transporter = nodemailer.createTransport({
-    host: smtpHost,
-    port: smtpPort,
-    secure: smtpPort === 465,
-    auth: {
-      user: smtpUser,
-      pass: smtpPass,
-    },
-  });
+  if (!shouldUseFileStorage) {
+    return false;
+  }
 
-  await transporter.sendMail({
-    from: smtpFrom,
-    to: smtpTo,
-    replyTo: inquiry.email,
-    subject: `[Portfolio Inquiry] ${inquiry.subject}`,
-    text: `Name: ${inquiry.name}\nEmail: ${inquiry.email}\nSubject: ${inquiry.subject}\n\nMessage:\n${inquiry.message}`,
-    html: `
-      <div>
-        <p><strong>Name:</strong> ${inquiry.name}</p>
-        <p><strong>Email:</strong> ${inquiry.email}</p>
-        <p><strong>Subject:</strong> ${inquiry.subject}</p>
-        <p><strong>Message:</strong></p>
-        <p>${inquiry.message.replace(/\n/g, '<br />')}</p>
-      </div>
-    `,
-  });
+  const existing = await readInquiries();
+  const updatedStore = [inquiry, ...existing];
+  await fs.writeFile(inquiryStorePath, `${JSON.stringify(updatedStore, null, 2)}\n`, 'utf8');
+  return true;
 }
 
 export async function GET() {
@@ -96,8 +149,6 @@ export async function POST(request) {
       );
     }
 
-    const existing = await readInquiries();
-
     const inquiry = {
       id: randomUUID(),
       name: values.name,
@@ -107,17 +158,18 @@ export async function POST(request) {
       createdAt: new Date().toISOString(),
     };
 
-    const updatedStore = [inquiry, ...existing];
-    await fs.writeFile(inquiryStorePath, `${JSON.stringify(updatedStore, null, 2)}\n`, 'utf8');
+    let wasSavedToGoogleSheets = false;
 
     try {
-      await sendEmail(inquiry);
+      wasSavedToGoogleSheets = await saveInquiryToGoogleSheets(inquiry);
     } catch {
       return NextResponse.json(
-        { success: true, message: 'Message saved successfully. Email delivery is currently unavailable.' },
-        { status: 200 }
+        { success: false, message: 'Unable to save your inquiry right now. Please try again later.' },
+        { status: 502 }
       );
     }
+
+    const wasPersisted = await persistInquiry(inquiry);
 
     return NextResponse.json(
       { success: true, message: 'Message sent successfully — I will reply shortly.' },

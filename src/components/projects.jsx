@@ -1,26 +1,23 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowUpRight, ExternalLink, GitBranch } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { ArrowUpRight, BarChart3, Bot, Code2, Map, ShoppingCart, ShipWheel } from 'lucide-react';
 import { portfolioData } from '../data/portfolioData';
 
 const projects = portfolioData.projects;
 
-const filters = ['All', 'Analytics', 'Automation'];
+const projectVisuals = {
+  cart: ShoppingCart,
+  travel: Map,
+  cruise: ShipWheel,
+  analytics: BarChart3,
+  automation: Bot,
+};
 
 export default function Projects() {
-  const [activeFilter, setActiveFilter] = useState('All');
-
-  const visibleProjects = useMemo(() => {
-    return activeFilter === 'All'
-      ? projects
-      : projects.filter((project) => project.category === activeFilter);
-  }, [activeFilter]);
-
   return (
     <section id="projects" className="mx-auto max-w-6xl px-4 py-20 sm:px-6 lg:px-8">
-      <div className="mb-10 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+      <div className="mb-10">
         <div>
           <p className="text-sm font-semibold uppercase tracking-[0.3em] text-primary-600 dark:text-primary-300">
             Projects
@@ -29,92 +26,53 @@ export default function Projects() {
             Selected work with measurable product impact.
           </h2>
         </div>
-
-        <div className="flex flex-wrap gap-2">
-          {filters.map((filter) => (
-            <button
-              key={filter}
-              type="button"
-              onClick={() => setActiveFilter(filter)}
-              className={`rounded-full px-4 py-2 text-sm font-medium transition ${
-                activeFilter === filter
-                  ? 'bg-slate-950 text-white dark:bg-primary-600'
-                  : 'border border-slate-200 bg-white text-slate-700 hover:border-primary-500 hover:text-primary-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:text-primary-300'
-              }`}
-            >
-              {filter}
-            </button>
-          ))}
-        </div>
       </div>
 
-      <AnimatePresence mode="popLayout">
-        <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-          {visibleProjects.map((project) => (
+      <div className="space-y-7">
+        {projects.map((project, index) => {
+          const ProjectVisual = projectVisuals[project.visual] || Code2;
+          const visibleTech = project.tech.slice(0, 6);
+          const remainingTech = project.tech.length - visibleTech.length;
+
+          return (
             <motion.article
               key={project.title}
-              layout
-              initial={{ opacity: 0, y: 18, scale: 0.98 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -12, scale: 0.98 }}
-              transition={{ duration: 0.25, ease: 'easeOut' }}
-              className="group relative overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-xl dark:border-slate-800 dark:bg-slate-900/80"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, amount: 0.2 }}
+              transition={{ duration: 0.35, delay: index * 0.06 }}
+              className="overflow-hidden rounded-[30px] border border-primary-100 bg-primary-50/70 shadow-sm dark:border-slate-800 dark:bg-slate-900/80"
             >
-              <div className="relative h-56 overflow-hidden bg-slate-100 dark:bg-slate-800">
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/10 to-transparent" />
-                <div className="absolute inset-x-0 bottom-0 flex items-center justify-between p-4 opacity-0 transition duration-300 group-hover:opacity-100">
-                  <a
-                    href={project.github}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="rounded-full bg-white/90 p-2 text-slate-900 backdrop-blur"
-                    aria-label="View GitHub"
-                  >
-                    <GitBranch size={16} />
+              <div className="grid items-center gap-8 p-7 sm:p-10 lg:grid-cols-[1.2fr_0.8fr]">
+                <div>
+                  <h3 className="text-3xl font-bold tracking-tight text-primary-700 dark:text-primary-300 sm:text-4xl">{project.title}</h3>
+                  <p className="mt-2 text-base font-medium text-slate-700 dark:text-slate-200">{project.period}</p>
+                  <p className="mt-4 max-w-2xl text-base leading-7 text-slate-600 dark:text-slate-300">{project.description}</p>
+
+                  <ul className="mt-2 list-disc space-y-1 pl-5 text-sm leading-7 text-slate-600 marker:text-slate-500 dark:text-slate-300">
+                    {project.highlights.map((highlight) => <li key={highlight}>{highlight}</li>)}
+                  </ul>
+
+                  <div className="mt-5 flex flex-wrap gap-2">
+                    {visibleTech.map((item) => (
+                      <span key={item} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">{item}</span>
+                    ))}
+                    {remainingTech > 0 && <span className="rounded-lg px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200">+{remainingTech} more</span>}
+                  </div>
+
+                  <a href={project.projectUrl || project.github} target="_blank" rel="noreferrer" className="mt-6 inline-flex items-center gap-2 rounded-full border-2 border-primary-700 bg-white px-6 py-3 text-sm font-semibold text-primary-700 shadow-sm transition hover:bg-primary-700 hover:text-white dark:border-primary-300 dark:bg-slate-900 dark:text-primary-200 dark:hover:bg-primary-300 dark:hover:text-slate-950">
+                    View Project Details <ArrowUpRight size={17} />
                   </a>
-                  <a
-                    href={project.demo}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="rounded-full bg-white/90 p-2 text-slate-900 backdrop-blur"
-                    aria-label="View live demo"
-                  >
-                    <ExternalLink size={16} />
-                  </a>
-                </div>
-              </div>
-
-              <div className="p-5">
-                <div className="mb-3 flex items-center justify-between gap-3">
-                  <span className="rounded-full bg-primary-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-primary-700 dark:bg-primary-500/20 dark:text-primary-200">
-                    {project.category}
-                  </span>
-                  <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Case Study</span>
                 </div>
 
-                <h3 className="text-xl font-semibold text-slate-900 dark:text-white">{project.title}</h3>
-                <p className="mt-3 text-sm leading-7 text-slate-600 dark:text-slate-300">{project.description}</p>
-
-                <div className="mt-5 flex flex-wrap gap-2">
-                  {project.tech.map((item) => (
-                    <span
-                      key={item}
-                      className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-                    >
-                      {item}
-                    </span>
-                  ))}
-                </div>
-
-                <div className="mt-5 flex items-center gap-2 text-sm font-medium text-primary-700 dark:text-primary-300">
-                  <ArrowUpRight size={16} />
-                  Explore project
+                <div className="flex min-h-56 items-center justify-center rounded-3xl bg-gradient-to-br from-white to-primary-100/70 p-8 dark:from-slate-800 dark:to-primary-950/50">
+                  <ProjectVisual className="h-36 w-36 text-primary-600 dark:text-primary-300" strokeWidth={1.25} />
                 </div>
               </div>
             </motion.article>
-          ))}
-        </div>
-      </AnimatePresence>
+          );
+        })}
+      </div>
     </section>
   );
 }
